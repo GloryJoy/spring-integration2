@@ -1,7 +1,10 @@
 package com.joyful.java.spring.integration.MessageDesignPattern;
 
+import com.joyful.java.spring.integration.MessageDesignPattern.configuration.FooReservationGateway;
 import com.joyful.java.spring.integration.MessageDesignPattern.model.EventMessage;
+import com.joyful.java.spring.integration.MessageDesignPattern.model.FooReservation;
 import com.joyful.java.spring.integration.MessageDesignPattern.model.ReservationRecord;
+import com.joyful.java.spring.integration.MessageDesignPattern.service.FooReservationService;
 import com.joyful.java.spring.integration.MessageDesignPattern.service.RegisterationService;
 import com.joyful.java.spring.integration.MessageDesignPattern.service.RegisterationServiceImp;
 import com.joyful.java.spring.integration.MessageDesignPattern.service.ReservationServiceImpl;
@@ -30,14 +33,16 @@ public class MessageDesignPatternApplication implements CommandLineRunner, ExitC
 	@Autowired
 	private ApplicationContext applicationContext;
 
+	@Autowired
+	FooReservationService fooReservationService;
 
 
 	public static void main(String[] args) {
 		SpringApplication.run(MessageDesignPatternApplication.class, args);
 	}
 
-	@Override
-	public void run(String... args) throws Exception {
+	public void processSimple(){
+
 		registerationService.commit("123");
 		registerationService.updateReservationRecord(new ReservationRecord("Person A", new Date()));
 
@@ -52,11 +57,48 @@ public class MessageDesignPatternApplication implements CommandLineRunner, ExitC
 
 		registerationService.notifyObservers(new EventMessage("Event - 1", "New Event"));
 
-		Thread.sleep(10000);
+
+		try {
+			Thread.sleep(10000);
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e);
+		}
+
+		SpringApplication.exit(applicationContext, this);
+	}
+	@Override
+	public void run(String... args) throws Exception {
+
+		processReservationQueue();
+		try {
+			Thread.sleep(10000);
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e);
+		}
 
 		SpringApplication.exit(applicationContext, this);
 	}
 
+
+	public void processReservationQueue(){
+		List<FooReservation> reservations = Arrays.asList(
+				new FooReservation(1, "User 1"),
+				new FooReservation(2, "User 2"),
+				new FooReservation(3, "User 3"),
+				new FooReservation(4, "User 4"),
+				new FooReservation(5, "User 5"),
+				new FooReservation(6, "User 6"));
+
+		reservations.forEach(reservation -> {
+			try {
+				fooReservationService.publishReservation(reservation);
+				Thread.sleep(2000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		});
+
+	}
 	@Override
 	public int getExitCode() {
 		return 0;
